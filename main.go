@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -16,8 +17,8 @@ func main() {
 	AIRTABLE_TABLE := os.Getenv("AIRTABLE_TABLE")
 
 	INFO_FETCHERS := []InfoFetcher{
-		GetBigFutureInfo,
-		GetPrincetonReviewInfo,
+		NewBigFuture(time.Second / 2).FetchInfo,
+		NewPrincetonReview(time.Second / 2).FetchInfo,
 	}
 
 	cb := &CollegeBase{
@@ -38,24 +39,36 @@ func main() {
 	// Fetch info for all the colleges.
 	statusLine("Fetching college info...")
 	statusCollegeHeader()
-	for _, college := range colleges {
-		start = statusStartCollege(college)
 
-		for _, fetcher := range INFO_FETCHERS {
-			fetcherErr := fetcher(college)
-			if fetcherErr != nil {
-				statusFatal(fetcherErr)
+	// waitGroup for them all to complete
+	var wg sync.WaitGroup
+
+	for _, c := range colleges {
+		wg.Add(1)
+		go func(college *College) {
+			var cwg sync.WaitGroup
+			for _, fetcher := range INFO_FETCHERS {
+				fetcherErr := fetcher(college)
+				if fetcherErr != nil {
+					// give up and explode
+					statusFatal(fetcherErr)
+				}
 			}
-		}
+			cwg.Wait()
 
-		// Save changes back to Airtable
-		patchErr := cb.Patch(college)
-		if patchErr != nil {
-			statusFatal(patchErr)
-		}
+			// save changes back to airtable
+			patcherr := cb.Patch(college)
+			if patcherr != nil {
+				statusFatal(patcherr)
+			}
 
-		statusEnd(start)
+			// print status line
+			statusCollege(college)
+			wg.Done()
+		}(c)
 	}
+
+	wg.Wait()
 
 }
 
@@ -68,8 +81,8 @@ func statusCollegeHeader() {
 	fmt.Printf("%40s%12s%12s\n", "Name", "BigFuture", "Princeton")
 }
 
-func statusStartCollege(c *College) (start time.Time) {
-	fmt.Printf("%40s%12d%12d  ", c.Name, c.BigFutureID, c.PrincetonReviewId)
+func statusCollege(c *College) (start time.Time) {
+	fmt.Printf("%40s%12d%12d\n", c.Name, c.BigFutureID, c.PrincetonReviewId)
 	return time.Now()
 }
 

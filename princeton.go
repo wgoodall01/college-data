@@ -4,14 +4,26 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
 )
 
-func GetPrincetonReviewInfo(c *College) (err error) {
+type PrincetonReview struct {
+	ticker <-chan time.Time
+}
+
+func NewPrincetonReview(rateLimit time.Duration) *PrincetonReview {
+	return &PrincetonReview{
+		ticker: time.Tick(rateLimit),
+	}
+}
+
+func (pr *PrincetonReview) FetchInfo(c *College) (err error) {
 	url := fmt.Sprintf("https://www.princetonreview.com/college/x-%d", c.PrincetonReviewId)
 
+	<-pr.ticker // rate limit
 	res, fetchErr := http.Get(url)
 	if fetchErr != nil {
 		return fetchErr
@@ -28,6 +40,10 @@ func GetPrincetonReviewInfo(c *College) (err error) {
 			err = errors.Errorf("princeton parse error: %v", panicked)
 		}
 	}()
+
+	// lock college for editing
+	c.Lock()
+	defer c.Unlock()
 
 	c.NumApplicants = getPrincetonInt(doc, "Applicants")
 	c.AcceptanceRate = getPrincetonFloat(doc, "Acceptance Rate")

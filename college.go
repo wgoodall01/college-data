@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
 type College struct {
+	sync.Mutex // Lock for when used by multiple threads.
+
 	ID   string `json:"-"`
 	Name string `json:"Name"`
 

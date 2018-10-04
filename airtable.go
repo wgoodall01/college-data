@@ -137,11 +137,13 @@ func (cb *CollegeBase) Colleges() ([]*College, error) {
 	}
 
 	// add the ID to each college record
+	// Note: avoid copying a College, it contains a mutex.
 	colleges := make([]*College, len(apiResp.Records))
-	for i, record := range apiResp.Records {
-		college := record.Fields
+	for i, _ := range apiResp.Records {
+		record := &apiResp.Records[i]
+		college := &record.Fields
 		college.ID = record.ID
-		colleges[i] = &college
+		colleges[i] = college
 	}
 
 	return colleges, nil
