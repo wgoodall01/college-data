@@ -45,10 +45,14 @@ func (pr *PrincetonReview) FetchInfo(c *College) (err error) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.NumApplicants = getPrincetonInt(doc, "Applicants")
-	c.AcceptanceRate = getPrincetonFloat(doc, "Acceptance Rate")
-	c.GPAAverage = getPrincetonFloat(doc, "Average HS GPA")
-	c.ACTRangeLow, c.ACTRangeHigh = getPrincetonIntRange(doc, "ACT Composite")
+	DefaultInt(&c.NumApplicants, getPrincetonInt(doc, "Applicants"))
+	DefaultFloat(&c.AcceptanceRate, getPrincetonFloat(doc, "Acceptance Rate"))
+	DefaultFloat(&c.GPAAverage, getPrincetonFloat(doc, "Average HS GPA"))
+
+	// ACT range
+	ACTRangeLow, ACTRangeHigh := getPrincetonIntRange(doc, "ACT Composite")
+	DefaultInt(&c.ACTRangeLow, ACTRangeLow)
+	DefaultInt(&c.ACTRangeHigh, ACTRangeHigh)
 
 	return nil
 }

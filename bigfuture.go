@@ -39,7 +39,7 @@ func (bf *BigFuture) FetchInfo(c *College) (err error) {
 	// Recover from any parse errors
 	defer func() {
 		if panicked := recover(); panicked != nil {
-			err = errors.Errorf("bigFuture parse error: %v", panicked)
+			err = errors.Errorf("bigFuture parse error for %d: %v", c.BigFutureID, panicked)
 		}
 	}()
 
@@ -48,49 +48,62 @@ func (bf *BigFuture) FetchInfo(c *College) (err error) {
 	defer c.Unlock()
 
 	if facts := bf.infoBlock(doc, "Quick Facts"); facts != nil {
-		c.NumUndergrads = facts.propertyInt("Total undergraduates")
-		c.InStateTuition = facts.propertyFloat("In-State Tuition")
-		c.OutOfStateTuition = facts.propertyFloat("Out-of-State Tuition")
+		DefaultInt(&c.NumUndergrads, facts.propertyInt("Total undergraduates"))
+		DefaultFloat(&c.InStateTuition, facts.propertyFloat("In-State Tuition"))
+		DefaultFloat(&c.OutOfStateTuition, facts.propertyFloat("Out-of-State Tuition"))
+	}
 
+	if schoolType := bf.infoBlock(doc, "Type of School"); schoolType != nil {
+		DefaultInt(&c.SATCode, schoolType.propertyInt("College Board Code"))
+
+		// get ownership
+		if len(schoolType.descriptors) >= 2 {
+			ownership := strings.TrimSpace(schoolType.descriptors[1])
+			if ownership == "Public" {
+				DefaultString(&c.Ownership, &ownership)
+			} else if ownership == "Private" {
+				DefaultString(&c.Ownership, &ownership)
+			}
+		}
 	}
 
 	if admission := bf.infoBlock(doc, "Admission"); admission != nil {
-		c.StandardDeadline = admission.propertyDeadline("Regular application due")
-		c.StandardNotification = admission.propertyDeadline("College will notify student of admission")
+		DefaultDeadline(&c.StandardDeadline, admission.propertyDeadline("Regular application due"))
+		DefaultDeadline(&c.StandardNotification, admission.propertyDeadline("College will notify student of admission"))
 	}
 
 	if early := bf.infoBlock(doc, "Early Decision and Action"); early != nil {
-		c.EarlyDeadline = early.propertyDeadline("Early action application due")
-		c.EarlyNotification = early.propertyDeadline("College will notify student of early action admission by")
+		DefaultDeadline(&c.EarlyDeadline, early.propertyDeadline("Early action application due"))
+		DefaultDeadline(&c.EarlyNotification, early.propertyDeadline("College will notify student of early action admission by"))
 	}
 
 	if actComposite := bf.infoBlock(doc, "ACT Composite"); actComposite != nil {
-		c.ACTComposite_30_36 = actComposite.propertyFloat("30 - 36")
-		c.ACTComposite_24_29 = actComposite.propertyFloat("24 - 29")
-		c.ACTComposite_18_23 = actComposite.propertyFloat("18 - 23")
-		c.ACTComposite_12_17 = actComposite.propertyFloat("12 - 17")
+		DefaultFloat(&c.ACTComposite_30_36, actComposite.propertyFloat("30 - 36"))
+		DefaultFloat(&c.ACTComposite_24_29, actComposite.propertyFloat("24 - 29"))
+		DefaultFloat(&c.ACTComposite_18_23, actComposite.propertyFloat("18 - 23"))
+		DefaultFloat(&c.ACTComposite_12_17, actComposite.propertyFloat("12 - 17"))
 	}
 
 	if actMath := bf.infoBlock(doc, "ACT Math"); actMath != nil {
-		c.ACTMath_30_36 = actMath.propertyFloat("30 - 36")
-		c.ACTMath_24_29 = actMath.propertyFloat("24 - 29")
-		c.ACTMath_18_23 = actMath.propertyFloat("18 - 23")
-		c.ACTMath_12_17 = actMath.propertyFloat("12 - 17")
+		DefaultFloat(&c.ACTMath_30_36, actMath.propertyFloat("30 - 36"))
+		DefaultFloat(&c.ACTMath_24_29, actMath.propertyFloat("24 - 29"))
+		DefaultFloat(&c.ACTMath_18_23, actMath.propertyFloat("18 - 23"))
+		DefaultFloat(&c.ACTMath_12_17, actMath.propertyFloat("12 - 17"))
 	}
 
 	if actEnglish := bf.infoBlock(doc, "ACT English"); actEnglish != nil {
-		c.ACTEnglish_30_36 = actEnglish.propertyFloat("30 - 36")
-		c.ACTEnglish_24_29 = actEnglish.propertyFloat("24 - 29")
-		c.ACTEnglish_18_23 = actEnglish.propertyFloat("18 - 23")
-		c.ACTEnglish_12_17 = actEnglish.propertyFloat("12 - 17")
+		DefaultFloat(&c.ACTEnglish_30_36, actEnglish.propertyFloat("30 - 36"))
+		DefaultFloat(&c.ACTEnglish_24_29, actEnglish.propertyFloat("24 - 29"))
+		DefaultFloat(&c.ACTEnglish_18_23, actEnglish.propertyFloat("18 - 23"))
+		DefaultFloat(&c.ACTEnglish_12_17, actEnglish.propertyFloat("12 - 17"))
 	}
 
 	if gpa := bf.infoBlock(doc, "GPAs of incoming freshmen"); gpa != nil {
-		c.GPA_375_plus = gpa.propertyFloat("3.75+")
-		c.GPA_350_374 = gpa.propertyFloat("3.5 - 3.74")
-		c.GPA_325_349 = gpa.propertyFloat("3.25 - 3.49")
-		c.GPA_300_324 = gpa.propertyFloat("3.00 - 3.24")
-		c.GPA_250_299 = gpa.propertyFloat("2.50 - 2.99")
+		DefaultFloat(&c.GPA_375_plus, gpa.propertyFloat("3.75+"))
+		DefaultFloat(&c.GPA_350_374, gpa.propertyFloat("3.5 - 3.74"))
+		DefaultFloat(&c.GPA_325_349, gpa.propertyFloat("3.25 - 3.49"))
+		DefaultFloat(&c.GPA_300_324, gpa.propertyFloat("3.00 - 3.24"))
+		DefaultFloat(&c.GPA_250_299, gpa.propertyFloat("2.50 - 2.99"))
 	}
 
 	return nil
@@ -125,8 +138,10 @@ func (bf *BigFuture) infoBlock(root *goquery.Document, headerText string) *bigFu
 func (ib *bigFutureInfoBlock) property(prop string) *string {
 	for _, desc := range ib.descriptors {
 		split := strings.Split(desc, ":")
-		if len(split) != 2 {
+		if len(split) > 2 {
 			panic(errors.Errorf("line with multiple ':': '%s'", desc))
+		} else if len(split) < 2 {
+			continue // ignore the line
 		}
 
 		key := strings.ToLower(strings.TrimSpace(split[0]))

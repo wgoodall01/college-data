@@ -18,6 +18,9 @@ type College struct {
 	BigFutureID       int `json:"_big_future_id"`
 	PrincetonReviewId int `json:"_princeton_review_id"`
 
+	// Public/private
+	Ownership *string `json:"Ownership,omitempty"`
+
 	// From BigFuture: deadlines, # undergrads, tuition
 	NumUndergrads        *int      `json:"Num. Undergrads,omitempty"`
 	InStateTuition       *float64  `json:"Tuition: In-State,omitempty"`
@@ -52,6 +55,35 @@ type College struct {
 	GPAAverage     *float64 `json:"GPA Average,omitempty"`
 	ACTRangeLow    *int     `json:"ACT Range Low,omitempty"`
 	ACTRangeHigh   *int     `json:"ACT Range High,omitempty"`
+
+	// Codes for test score submission
+	SATCode *int `json:"SAT Code,omitempty"`
+	ACTCode *int `json:"ACT Code,omitempty"`
+}
+
+// setters only if fields are empty
+func DefaultInt(value **int, x *int) {
+	if *value == nil {
+		*value = x
+	}
+}
+
+func DefaultFloat(value **float64, x *float64) {
+	if *value == nil {
+		*value = x
+	}
+}
+
+func DefaultDeadline(value **Deadline, x *Deadline) {
+	if *value == nil {
+		*value = x
+	}
+}
+
+func DefaultString(value **string, x *string) {
+	if *value == nil {
+		*value = x
+	}
 }
 
 const DeadlineFormat = "2006-01-02"
